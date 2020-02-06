@@ -76,13 +76,13 @@ def create_multi_dim_array(dimensions, init_data = None):
 
 ## return the C encoding of the array @table whose dimension tuple is @p dimensions
 #  and data's format is @p storage_precision
-def get_table_content(table, dimensions, storage_precision, language=C_Code, max_len=80):
+def get_table_content(table, dimensions, storage_precision, language=C_Code, max_len=80, rounded=False):
     row_suffix = "\n" + CodeConfiguration.tab
     if len(dimensions) == 1:
         code = ""
         new_line = "{"
         for value in table:
-            value_str = storage_precision.get_cst(value, language=language)
+            value_str = storage_precision.get_cst(value, language=language, no_round=rounded)
             if len(new_line) + len(value_str) > max_len:
                 if new_line[0] == "{":
                     # if we are at the first line and an actual line break
@@ -133,7 +133,7 @@ class ML_Table(ML_LeafNode):
     str_name = "Table"
     ## ML_Table constructor 
     #  @param empty indicates whether the table should be initialized empty
-    def __init__(self, empty = False, storage_precision = None, **kwords): 
+    def __init__(self, empty = False, storage_precision = None, rounded=False, **kwords): 
         self.attributes = Attributes(**kwords)
         dimensions = attr_init(kwords, "dimensions", [])
         #storage_precision = attr_init(kwords, "storage_precision", None)
@@ -144,6 +144,9 @@ class ML_Table(ML_LeafNode):
         self.storage_precision = storage_precision
 
         self.empty = empty
+
+        # are constant already rounded (can accelerate generation)
+        self.rounded = rounded
 
         self.index = -1
 
@@ -208,7 +211,7 @@ class ML_Table(ML_LeafNode):
         return "%s %s[%s]" % (precision_name, table_name, "][".join([str(dim) for dim in self.dimensions]))
 
     def get_content_init(self, language = C_Code):
-        return get_table_content(self.table, self.dimensions, self.get_storage_precision(), language = language)
+        return get_table_content(self.table, self.dimensions, self.get_storage_precision(), language = language, rounded=self.rounded)
 
     def get_str(
             self, depth = None, display_precision = False,
@@ -271,8 +274,8 @@ class ML_NewTable(ML_Table):
   ## string used in get_str
   str_name = "NewTable"
   ## ML_NewTable constructor
-  def __init__(self, dimensions = (16,), storage_precision = None, empty = False, **kw):
-    ML_Table.__init__(self, dimensions = dimensions, storage_precision = storage_precision, empty = empty, **kw)
+  def __init__(self, dimensions = (16,), storage_precision = None, empty = False, rounded=False, **kw):
+    ML_Table.__init__(self, dimensions = dimensions, storage_precision = storage_precision, empty = empty, rounded=rounded, **kw)
     self.precision = ML_TableFormat(storage_precision, dimensions)
 
   def get_precision(self):
